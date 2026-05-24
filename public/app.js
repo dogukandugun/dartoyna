@@ -143,7 +143,7 @@ const RTC_CONFIG = { iceServers: [
 
 async function cameraInit() {
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
     cameraReady = true;
   } catch (e) {
     cameraReady = false;
