@@ -33,17 +33,22 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('start-game', ({ mode, legsToWin } = {}) => {
+  socket.on('start-game', ({ mode, legsToWin, cameraEnabled } = {}) => {
     const roomCode = store.socketToRoom.get(socket.id);
     if (!roomCode) return socket.emit('error', { message: 'Oda bulunamadı' });
     const room = store.rooms.get(roomCode);
     if (room && mode) {
       room.settings.mode = parseInt(mode) || 301;
       room.settings.legsToWin = parseInt(legsToWin) || 1;
+      room.settings.cameraEnabled = room.players.length === 2 && !!cameraEnabled;
     }
     const result = store.startGame(roomCode, socket.id);
     if (result.error) return socket.emit('error', { message: result.error });
     io.to(roomCode).emit('game-update', sanitize(result.room));
+  });
+
+  socket.on('webrtc-signal', ({ roomCode, data } = {}) => {
+    socket.to(roomCode).emit('webrtc-signal', { data });
   });
 
   socket.on('submit-score', ({ score } = {}) => {

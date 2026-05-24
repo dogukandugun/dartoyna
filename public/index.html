@@ -49,6 +49,9 @@
           <option value="3">BO5</option>
         </select>
       </label>
+      <label id="camera-label" class="hidden camera-label">
+        <input type="checkbox" id="setting-camera"> 📷 Kameralı oyna
+      </label>
       <button id="btn-start" class="btn btn-primary">Oyunu Başlat</button>
     </div>
 
@@ -59,6 +62,8 @@
   <!-- VIEW: Game -->
   <div id="view-game" class="view">
     <div id="game-players" class="players-row"></div>
+
+    <video id="game-video" class="game-video hidden" autoplay playsinline muted></video>
 
     <div class="turn-info">
       <div id="turn-label" class="turn-label"></div>

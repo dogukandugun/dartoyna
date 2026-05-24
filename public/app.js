@@ -7,6 +7,7 @@ let myName = '';
 let myRoomCode = '';
 let isHost = false;
 let lastGameOver = null;
+let roomPlayerCount = 0;
 
 // ── View switching ─────────────────────────────────────────────
 function showView(id) {
@@ -68,7 +69,8 @@ document.getElementById('lobby-code').addEventListener('click', () => {
 document.getElementById('btn-start').addEventListener('click', () => {
   const mode = parseInt(document.getElementById('setting-mode').value);
   const legsToWin = parseInt(document.getElementById('setting-format').value);
-  socket.emit('start-game', { mode, legsToWin });
+  const cameraEnabled = roomPlayerCount === 2 && document.getElementById('setting-camera').checked;
+  socket.emit('start-game', { mode, legsToWin, cameraEnabled });
 });
 
 // ── Training mode ─────────────────────────────────────────────
@@ -123,6 +125,86 @@ document.getElementById('btn-miss').addEventListener('click', () => {
   trainingStreak = 0;
   updateTrainingStats();
   nextTrainingTarget();
+});
+
+// ── WebRTC camera ──────────────────────────────────────────────
+let peerConn = null;
+let localStream = null;
+let remoteStream = null;
+let cameraReady = false;
+let cameraInitStarted = false;
+let lastIsMeTurn = false;
+
+const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+async function cameraInit() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    cameraReady = true;
+  } catch (e) {
+    cameraReady = false;
+  }
+}
+
+function cameraSetupPeer() {
+  if (peerConn) return;
+  peerConn = new RTCPeerConnection(RTC_CONFIG);
+  if (localStream) localStream.getTracks().forEach(t => peerConn.addTrack(t, localStream));
+  peerConn.ontrack = e => {
+    remoteStream = e.streams[0];
+    cameraUpdateDisplay(lastIsMeTurn);
+  };
+  peerConn.onicecandidate = e => {
+    if (e.candidate) socket.emit('webrtc-signal', { roomCode: myRoomCode, data: { type: 'ice', candidate: e.candidate } });
+  };
+}
+
+async function cameraStartAsOfferer() {
+  await cameraInit();
+  if (!cameraReady) return;
+  cameraSetupPeer();
+  const offer = await peerConn.createOffer();
+  await peerConn.setLocalDescription(offer);
+  socket.emit('webrtc-signal', { roomCode: myRoomCode, data: { type: 'offer', sdp: offer } });
+}
+
+async function cameraStartAsAnswerer() {
+  await cameraInit();
+  if (cameraReady) cameraSetupPeer();
+}
+
+function cameraStop() {
+  if (peerConn) { peerConn.close(); peerConn = null; }
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  remoteStream = null;
+  cameraReady = false;
+  cameraInitStarted = false;
+  const v = document.getElementById('game-video');
+  v.srcObject = null;
+  v.classList.add('hidden');
+}
+
+function cameraUpdateDisplay(isMeTurn) {
+  const v = document.getElementById('game-video');
+  const src = isMeTurn ? localStream : remoteStream;
+  if (!src) { v.classList.add('hidden'); return; }
+  v.srcObject = src;
+  v.classList.remove('hidden');
+}
+
+socket.on('webrtc-signal', async ({ data }) => {
+  if (!cameraReady) return;
+  if (data.type === 'offer') {
+    cameraSetupPeer();
+    await peerConn.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    const answer = await peerConn.createAnswer();
+    await peerConn.setLocalDescription(answer);
+    socket.emit('webrtc-signal', { roomCode: myRoomCode, data: { type: 'answer', sdp: answer } });
+  } else if (data.type === 'answer' && peerConn) {
+    await peerConn.setRemoteDescription(new RTCSessionDescription(data.sdp));
+  } else if (data.type === 'ice' && peerConn) {
+    try { await peerConn.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (_) {}
+  }
 });
 
 // ── Numpad ─────────────────────────────────────────────────────
@@ -181,9 +263,11 @@ function setNumpadEnabled(enabled) {
 
 // ── Game over view ─────────────────────────────────────────────
 document.getElementById('btn-new-game').addEventListener('click', () => {
+  cameraStop();
   myRoomCode = '';
   isHost = false;
   lastGameOver = null;
+  roomPlayerCount = 0;
   document.getElementById('home-name').value = '';
   document.getElementById('home-code').value = '';
   showView('view-home');
@@ -216,6 +300,7 @@ socket.on('game-update', (state) => {
 
 socket.on('game-over', (data) => {
   lastGameOver = data;
+  cameraStop();
   renderGameOver(data);
   showView('view-gameover');
 });
@@ -240,6 +325,7 @@ socket.on('error', ({ message }) => {
 // ── Render functions ───────────────────────────────────────────
 function renderLobby(room) {
   document.getElementById('lobby-code').textContent = room.roomCode;
+  roomPlayerCount = room.players.length;
 
   const list = document.getElementById('lobby-players');
   list.innerHTML = room.players.map(p => {
@@ -252,6 +338,13 @@ function renderLobby(room) {
   if (isHost) {
     settingsPanel.classList.remove('hidden');
     waitingMsg.classList.add('hidden');
+    const cameraLabel = document.getElementById('camera-label');
+    if (room.players.length === 2) {
+      cameraLabel.classList.remove('hidden');
+    } else {
+      cameraLabel.classList.add('hidden');
+      document.getElementById('setting-camera').checked = false;
+    }
   } else {
     settingsPanel.classList.add('hidden');
     waitingMsg.classList.remove('hidden');
@@ -287,6 +380,16 @@ function renderGame(state) {
   avgs.innerHTML = state.players.map(p =>
     `<span class="avg-chip">${esc(p.name)}: ort ${p.avg}</span>`
   ).join('');
+
+  if (state.settings.cameraEnabled) {
+    lastIsMeTurn = isMeTurn;
+    if (!cameraInitStarted) {
+      cameraInitStarted = true;
+      if (isHost) cameraStartAsOfferer();
+      else cameraStartAsAnswerer();
+    }
+    cameraUpdateDisplay(isMeTurn);
+  }
 }
 
 function renderGameOver(data) {
