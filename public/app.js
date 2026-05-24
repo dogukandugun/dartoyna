@@ -285,6 +285,22 @@ document.getElementById('btn-share').addEventListener('click', () => {
   }
 });
 
+// ── Turn sound ─────────────────────────────────────────────────
+function playTurnSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.25);
+  } catch (_) {}
+}
+
 // ── Socket events ──────────────────────────────────────────────
 socket.on('room-update', (room) => {
   myRoomCode = room.roomCode;
@@ -293,13 +309,20 @@ socket.on('room-update', (room) => {
   showView('view-lobby');
 });
 
+let lastPlayerIndex = -1;
+
 socket.on('game-update', (state) => {
+  if (lastPlayerIndex !== -1 && state.currentPlayerIndex !== lastPlayerIndex) {
+    playTurnSound();
+  }
+  lastPlayerIndex = state.currentPlayerIndex;
   renderGame(state);
   showView('view-game');
 });
 
 socket.on('game-over', (data) => {
   lastGameOver = data;
+  lastPlayerIndex = -1;
   cameraStop();
   renderGameOver(data);
   showView('view-gameover');

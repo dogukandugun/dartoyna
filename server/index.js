@@ -106,7 +106,7 @@ function buildGameOverPayload(room) {
 
 function calcAvg(turns) {
   if (!turns.length) return 0;
-  return Math.round(turns.reduce((a, b) => a + b, 0) / turns.length / 3 * 10) / 10;
+  return Math.round(turns.reduce((a, b) => a + b, 0) / turns.length * 10) / 10;
 }
 
 const PORT = process.env.PORT || 3000;
