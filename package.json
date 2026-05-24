@@ -1,0 +1,19 @@
+{
+  "name": "dartoyna",
+  "version": "1.0.0",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "npx nodemon server/index.js",
+    "test": "jest --testEnvironment node"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "canvas": "^3.2.3",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.0"
+  }
+}

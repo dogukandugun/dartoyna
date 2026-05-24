@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:brainstorming)",
+      "Skill(superpowers:brainstorming:*)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:writing-plans:*)",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Do�ukan\\\\Desktop\\\\dartoyna\\\\docs\\\\superpowers\\\\plans\")",
+      "Skill(superpowers:executing-plans)",
+      "Skill(superpowers:executing-plans:*)",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Doğukan\\\\Desktop\\\\dartoyna\"; npm test 2>&1 | Select-String -Pattern \"PASS|FAIL|Tests:|Test Suites:\" | ForEach-Object { $_.Line })",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Doğukan\\\\Desktop\\\\dartoyna\"; npm test 2>&1 | Select-String -Pattern \"PASS|FAIL|Tests:|Test Suites:|TypeError\" | ForEach-Object { $_.Line })",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Doğukan\\\\Desktop\\\\dartoyna\"; npm test 2>&1 | Select-String -Pattern \"PASS|FAIL|Tests:|Test Suites:|●\" | ForEach-Object { $_.Line })",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Doğukan\\\\Desktop\\\\dartoyna\"; $proc = Start-Process node -ArgumentList \"server/index.js\" -NoNewWindow -PassThru; Start-Sleep -Seconds 2; $proc.HasExited; Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue)"
+    ]
+  }
+}

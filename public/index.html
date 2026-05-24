@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Dartoyna</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+  <!-- VIEW: Home -->
+  <div id="view-home" class="view active">
+    <div class="logo">🎯 Dartoyna</div>
+    <div class="card">
+      <input id="home-name" class="input" type="text" placeholder="Adın" maxlength="20" autocomplete="off">
+      <button id="btn-create" class="btn btn-primary">Oyun Oluştur</button>
+      <button id="btn-training" class="btn btn-training">🎯 Antrenman</button>
+      <div class="divider">veya</div>
+      <input id="home-code" class="input" type="text" placeholder="Oda Kodu (4 hane)" maxlength="4" inputmode="numeric">
+      <button id="btn-join" class="btn btn-secondary">Oyuna Katıl</button>
+    </div>
+    <p id="home-error" class="error hidden"></p>
+  </div>
+
+  <!-- VIEW: Lobby -->
+  <div id="view-lobby" class="view">
+    <div class="room-code-display">
+      Oda Kodu: <span id="lobby-code" class="code-badge" title="Kopyalamak için tıkla"></span>
+    </div>
+    <p class="hint">Arkadaşların bu kodu girsin</p>
+
+    <div id="lobby-players" class="player-list"></div>
+
+    <div id="lobby-settings" class="settings-panel hidden">
+      <label>Mod
+        <select id="setting-mode">
+          <option value="101">101</option>
+          <option value="201">201</option>
+          <option value="301" selected>301</option>
+          <option value="501">501</option>
+        </select>
+      </label>
+      <label>Format
+        <select id="setting-format">
+          <option value="1">BO1</option>
+          <option value="2" selected>BO3</option>
+          <option value="3">BO5</option>
+        </select>
+      </label>
+      <button id="btn-start" class="btn btn-primary">Oyunu Başlat</button>
+    </div>
+
+    <p class="hint" id="lobby-waiting-msg">Host oyunu başlatmayı bekliyor...</p>
+    <p id="lobby-error" class="error hidden"></p>
+  </div>
+
+  <!-- VIEW: Game -->
+  <div id="view-game" class="view">
+    <div id="game-players" class="players-row"></div>
+
+    <div class="turn-info">
+      <div id="turn-label" class="turn-label"></div>
+      <div id="checkout-hint" class="checkout-hint"></div>
+    </div>
+
+    <div id="bust-msg" class="bust-msg hidden"></div>
+
+    <div class="numpad-wrap">
+      <div id="numpad-display" class="numpad-display">0</div>
+      <div class="numpad-grid" id="numpad">
+        <button class="num-btn" data-val="7">7</button>
+        <button class="num-btn" data-val="8">8</button>
+        <button class="num-btn" data-val="9">9</button>
+        <button class="num-btn" data-val="4">4</button>
+        <button class="num-btn" data-val="5">5</button>
+        <button class="num-btn" data-val="6">6</button>
+        <button class="num-btn" data-val="1">1</button>
+        <button class="num-btn" data-val="2">2</button>
+        <button class="num-btn" data-val="3">3</button>
+        <button class="num-btn del-btn" data-val="del">⌫</button>
+        <button class="num-btn" data-val="0">0</button>
+        <button class="num-btn ok-btn" data-val="ok">OK</button>
+      </div>
+    </div>
+
+    <div id="averages" class="averages"></div>
+  </div>
+
+  <!-- VIEW: Game Over -->
+  <div id="view-gameover" class="view">
+    <div class="winner-banner">
+      🏆 <span id="winner-name"></span> kazandı!
+    </div>
+    <div id="gameover-stats" class="stats-list"></div>
+    <button id="btn-share" class="btn btn-secondary">Paylaş</button>
+    <button id="btn-new-game" class="btn btn-primary">Yeni Oyun</button>
+  </div>
+
+  <!-- VIEW: Training -->
+  <div id="view-training" class="view">
+    <div class="training-header">
+      <button id="btn-training-back" class="btn-back">← Geri</button>
+      <span class="training-streak" id="training-streak">🎯 0</span>
+    </div>
+    <div class="training-card">
+      <div class="training-label">Hedef</div>
+      <div id="training-target" class="training-target"></div>
+    </div>
+    <button id="btn-hit" class="btn btn-hit">Vurdum!</button>
+    <button id="btn-miss" class="btn btn-miss">Kaçırdım</button>
+    <div id="training-stats" class="training-stats"></div>
+  </div>
+
+  <!-- Dark mode toggle -->
+  <button id="btn-theme" class="theme-toggle" aria-label="Tema değiştir">🌙</button>
+
+  <script src="checkouts.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
