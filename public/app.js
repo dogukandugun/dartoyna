@@ -134,8 +134,12 @@ let remoteStream = null;
 let cameraReady = false;
 let cameraInitStarted = false;
 let lastIsMeTurn = false;
+let pendingSignals = [];
 
-const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+const RTC_CONFIG = { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+] };
 
 async function cameraInit() {
   try {
@@ -159,6 +163,20 @@ function cameraSetupPeer() {
   };
 }
 
+async function handleWebRTCSignal(data) {
+  if (data.type === 'offer') {
+    cameraSetupPeer();
+    await peerConn.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    const answer = await peerConn.createAnswer();
+    await peerConn.setLocalDescription(answer);
+    socket.emit('webrtc-signal', { roomCode: myRoomCode, data: { type: 'answer', sdp: answer } });
+  } else if (data.type === 'answer' && peerConn) {
+    await peerConn.setRemoteDescription(new RTCSessionDescription(data.sdp));
+  } else if (data.type === 'ice' && peerConn) {
+    try { await peerConn.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (_) {}
+  }
+}
+
 async function cameraStartAsOfferer() {
   await cameraInit();
   if (!cameraReady) return;
@@ -170,7 +188,10 @@ async function cameraStartAsOfferer() {
 
 async function cameraStartAsAnswerer() {
   await cameraInit();
-  if (cameraReady) cameraSetupPeer();
+  if (!cameraReady) return;
+  cameraSetupPeer();
+  for (const data of pendingSignals) await handleWebRTCSignal(data);
+  pendingSignals = [];
 }
 
 function cameraStop() {
@@ -179,6 +200,7 @@ function cameraStop() {
   remoteStream = null;
   cameraReady = false;
   cameraInitStarted = false;
+  pendingSignals = [];
   const v = document.getElementById('game-video');
   v.srcObject = null;
   v.classList.add('hidden');
@@ -193,18 +215,11 @@ function cameraUpdateDisplay(isMeTurn) {
 }
 
 socket.on('webrtc-signal', async ({ data }) => {
-  if (!cameraReady) return;
-  if (data.type === 'offer') {
-    cameraSetupPeer();
-    await peerConn.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    const answer = await peerConn.createAnswer();
-    await peerConn.setLocalDescription(answer);
-    socket.emit('webrtc-signal', { roomCode: myRoomCode, data: { type: 'answer', sdp: answer } });
-  } else if (data.type === 'answer' && peerConn) {
-    await peerConn.setRemoteDescription(new RTCSessionDescription(data.sdp));
-  } else if (data.type === 'ice' && peerConn) {
-    try { await peerConn.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (_) {}
+  if (!cameraReady) {
+    pendingSignals.push(data);
+    return;
   }
+  await handleWebRTCSignal(data);
 });
 
 // ── Numpad ─────────────────────────────────────────────────────
