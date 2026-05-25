@@ -19,7 +19,7 @@ class GameStore {
     const roomCode = this._generateCode();
     if (!roomCode) return { error: 'Oda oluşturulamadı' };
 
-    const player = { id: socketId, name: playerName.trim(), score: 0, legsWon: 0, turns: [] };
+    const player = { id: socketId, name: playerName.trim(), score: 0, legsWon: 0, turns: [], legTurns: [] };
     const room = {
       roomCode,
       hostId: socketId,
@@ -65,7 +65,7 @@ class GameStore {
     if (room.players.length >= 8) return { error: 'Oda dolu (max 8)' };
     if (room.players.find(p => p.name === trimmed)) return { error: 'Bu isim kullanımda' };
 
-    const player = { id: socketId, name: trimmed, score: 0, legsWon: 0, turns: [] };
+    const player = { id: socketId, name: trimmed, score: 0, legsWon: 0, turns: [], legTurns: [] };
     room.players.push(player);
     this.socketToRoom.set(socketId, roomCode);
     room.lastActivityAt = Date.now();
@@ -79,10 +79,12 @@ class GameStore {
     if (room.players.length < 2) return { error: 'En az 2 oyuncu gerekli' };
 
     const firstIdx = Math.floor(Math.random() * room.players.length);
+    room.gameType = 'dart';
     room.players.forEach(p => {
       p.score = room.settings.mode;
       p.legsWon = 0;
       p.turns = [];
+      p.legTurns = [];
     });
     room.currentLegIndex = 0;
     room.currentPlayerIndex = firstIdx;
@@ -102,6 +104,7 @@ class GameStore {
 
     room.lastActivityAt = Date.now();
     player.turns.push(score);
+    player.legTurns.push(score);
 
     const remaining = player.score - score;
 
@@ -136,7 +139,7 @@ class GameStore {
     const winnerIdx = room.currentPlayerIndex;
     room.firstPlayerThisLeg = (winnerIdx + 1) % room.players.length;
     room.currentPlayerIndex = room.firstPlayerThisLeg;
-    room.players.forEach(p => { p.score = room.settings.mode; });
+    room.players.forEach(p => { p.score = room.settings.mode; p.turns = []; p.legTurns = []; });
   }
 
   handleDisconnect(socketId) {
@@ -165,6 +168,62 @@ class GameStore {
     }, 3 * 60 * 1000);
 
     this.disconnectTimers.set(socketId, timer);
+  }
+
+  _randomTrainingTarget(filters = {}) {
+    const targets = [];
+    if (filters.single !== false) {
+      for (let i = 1; i <= 20; i++) targets.push(String(i));
+      targets.push('Bull');
+    }
+    if (filters.double !== false) {
+      for (let i = 1; i <= 20; i++) targets.push(`D${i}`);
+      targets.push('D-Bull');
+    }
+    if (filters.triple !== false) {
+      for (let i = 1; i <= 20; i++) targets.push(`T${i}`);
+    }
+    if (!targets.length) targets.push('20');
+    return targets[Math.floor(Math.random() * targets.length)];
+  }
+
+  startTraining(roomCode, socketId, { pointsToWin = 10, filters = {} } = {}) {
+    const room = this.rooms.get(roomCode);
+    if (!room) return { error: 'Oda bulunamadı' };
+    if (room.hostId !== socketId) return { error: 'Sadece oda sahibi başlatabilir' };
+    if (room.players.length < 2) return { error: 'En az 2 oyuncu gerekli' };
+
+    const firstIdx = Math.floor(Math.random() * room.players.length);
+    room.gameType = 'training';
+    room.settings = { pointsToWin: Math.max(1, parseInt(pointsToWin) || 10), filters };
+    room.players.forEach(p => { p.score = 0; p.legsWon = 0; p.turns = []; p.legTurns = []; });
+    room.currentLegIndex = 0;
+    room.currentPlayerIndex = firstIdx;
+    room.firstPlayerThisLeg = firstIdx;
+    room.currentTarget = this._randomTrainingTarget(filters);
+    room.status = 'playing';
+    room.lastActivityAt = Date.now();
+    return { room };
+  }
+
+  submitTraining(roomCode, socketId, hit) {
+    const room = this.rooms.get(roomCode);
+    if (!room || room.status !== 'playing' || room.gameType !== 'training') return { error: 'Oyun yok' };
+
+    const player = room.players[room.currentPlayerIndex];
+    if (player.id !== socketId) return { error: 'Sıra sende değil' };
+
+    room.lastActivityAt = Date.now();
+    if (hit) {
+      player.score++;
+      if (player.score >= room.settings.pointsToWin) {
+        room.status = 'finished';
+        return { room, gameOver: true };
+      }
+      room.currentTarget = this._randomTrainingTarget(room.settings.filters);
+    }
+    this._advanceTurn(room);
+    return { room };
   }
 
   startCleanupInterval() {

@@ -51,6 +51,26 @@ io.on('connection', (socket) => {
     socket.to(roomCode).emit('webrtc-signal', { data });
   });
 
+  socket.on('start-training', ({ pointsToWin, filters } = {}) => {
+    const roomCode = store.socketToRoom.get(socket.id);
+    if (!roomCode) return socket.emit('error', { message: 'Oda bulunamadı' });
+    const result = store.startTraining(roomCode, socket.id, { pointsToWin, filters });
+    if (result.error) return socket.emit('error', { message: result.error });
+    io.to(roomCode).emit('training-update', sanitize(result.room));
+  });
+
+  socket.on('submit-training', ({ hit } = {}) => {
+    const roomCode = store.socketToRoom.get(socket.id);
+    if (!roomCode) return socket.emit('error', { message: 'Oda bulunamadı' });
+    const result = store.submitTraining(roomCode, socket.id, !!hit);
+    if (result.error) return socket.emit('error', { message: result.error });
+    if (result.gameOver) {
+      io.to(roomCode).emit('training-over', buildTrainingGameOverPayload(result.room));
+    } else {
+      io.to(roomCode).emit('training-update', sanitize(result.room));
+    }
+  });
+
   socket.on('submit-score', ({ score } = {}) => {
     const roomCode = store.socketToRoom.get(socket.id);
     if (!roomCode) return socket.emit('error', { message: 'Oda bulunamadı' });
@@ -78,16 +98,19 @@ function sanitize(room) {
   return {
     roomCode: room.roomCode,
     hostId: room.hostId,
+    gameType: room.gameType || 'dart',
     players: room.players.map(p => ({
       id: p.id,
       name: p.name,
       score: p.score,
       legsWon: p.legsWon,
       avg: calcAvg(p.turns),
+      legTurns: p.legTurns || [],
     })),
     settings: room.settings,
     currentLegIndex: room.currentLegIndex,
     currentPlayerIndex: room.currentPlayerIndex,
+    currentTarget: room.currentTarget || null,
     status: room.status,
   };
 }
@@ -101,6 +124,15 @@ function buildGameOverPayload(room) {
       legsWon: p.legsWon,
       avg: calcAvg(p.turns),
     })),
+  };
+}
+
+function buildTrainingGameOverPayload(room) {
+  const winner = room.players.reduce((a, b) => a.score >= b.score ? a : b);
+  return {
+    winner: winner.name,
+    gameType: 'training',
+    players: room.players.map(p => ({ name: p.name, score: p.score })),
   };
 }
 

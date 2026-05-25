@@ -8,6 +8,7 @@ let myRoomCode = '';
 let isHost = false;
 let lastGameOver = null;
 let roomPlayerCount = 0;
+let pendingGameType = null;
 
 // ── View switching ─────────────────────────────────────────────
 function showView(id) {
@@ -66,27 +67,46 @@ document.getElementById('lobby-code').addEventListener('click', () => {
   navigator.clipboard.writeText(myRoomCode).catch(() => {});
 });
 
+document.getElementById('setting-game-type').addEventListener('change', () => {
+  const isTraining = document.getElementById('setting-game-type').value === 'training';
+  document.getElementById('dart-settings').classList.toggle('hidden', isTraining);
+  document.getElementById('training-lobby-settings').classList.toggle('hidden', !isTraining);
+});
+
 document.getElementById('btn-start').addEventListener('click', () => {
-  const mode = parseInt(document.getElementById('setting-mode').value);
-  const legsToWin = parseInt(document.getElementById('setting-format').value);
-  const cameraEnabled = roomPlayerCount === 2 && document.getElementById('setting-camera').checked;
-  socket.emit('start-game', { mode, legsToWin, cameraEnabled });
+  const gameType = document.getElementById('setting-game-type').value;
+  if (gameType === 'training') {
+    const pointsToWin = parseInt(document.getElementById('setting-points').value);
+    const filters = {
+      single: document.getElementById('ot-single').checked,
+      double: document.getElementById('ot-double').checked,
+      triple: document.getElementById('ot-triple').checked,
+    };
+    socket.emit('start-training', { pointsToWin, filters });
+  } else {
+    const mode = parseInt(document.getElementById('setting-mode').value);
+    const legsToWin = parseInt(document.getElementById('setting-format').value);
+    const cameraEnabled = roomPlayerCount === 2 && document.getElementById('setting-camera').checked;
+    socket.emit('start-game', { mode, legsToWin, cameraEnabled });
+  }
 });
 
 // ── Training mode ─────────────────────────────────────────────
-const TRAINING_TARGETS = [
-  ...Array.from({ length: 20 }, (_, i) => String(i + 1)),
-  ...Array.from({ length: 20 }, (_, i) => `D${i + 1}`),
-  ...Array.from({ length: 20 }, (_, i) => `T${i + 1}`),
-  'Bull', 'D-Bull',
-];
-
 let trainingHits = 0;
 let trainingTotal = 0;
 let trainingStreak = 0;
+let activeTrainingTargets = [];
+
+function buildTrainingTargets(single, double_, triple) {
+  const t = [];
+  if (single) { for (let i = 1; i <= 20; i++) t.push(String(i)); t.push('Bull'); }
+  if (double_) { for (let i = 1; i <= 20; i++) t.push(`D${i}`); t.push('D-Bull'); }
+  if (triple) { for (let i = 1; i <= 20; i++) t.push(`T${i}`); }
+  return t.length ? t : ['20'];
+}
 
 function randomTarget() {
-  return TRAINING_TARGETS[Math.floor(Math.random() * TRAINING_TARGETS.length)];
+  return activeTrainingTargets[Math.floor(Math.random() * activeTrainingTargets.length)];
 }
 
 function nextTrainingTarget() {
@@ -104,6 +124,25 @@ function updateTrainingStats() {
 }
 
 document.getElementById('btn-training').addEventListener('click', () => {
+  showView('view-training-setup');
+});
+
+document.getElementById('btn-training-online').addEventListener('click', () => {
+  const name = document.getElementById('home-name').value.trim();
+  if (!name) return showError('home-error', 'Adını gir');
+  myName = name;
+  pendingGameType = 'training';
+  socket.emit('create-room', { playerName: name });
+});
+
+document.getElementById('btn-training-setup-back').addEventListener('click', () => showView('view-home'));
+
+document.getElementById('btn-training-start').addEventListener('click', () => {
+  const single = document.getElementById('ts-single').checked;
+  const double_ = document.getElementById('ts-double').checked;
+  const triple = document.getElementById('ts-triple').checked;
+  if (!single && !double_ && !triple) return showError('ts-error', 'En az bir tür seç');
+  activeTrainingTargets = buildTrainingTargets(single, double_, triple);
   trainingHits = 0; trainingTotal = 0; trainingStreak = 0;
   nextTrainingTarget();
   updateTrainingStats();
@@ -335,6 +374,22 @@ socket.on('game-update', (state) => {
   showView('view-game');
 });
 
+socket.on('training-update', (state) => {
+  if (lastPlayerIndex !== -1 && state.currentPlayerIndex !== lastPlayerIndex) {
+    playTurnSound();
+  }
+  lastPlayerIndex = state.currentPlayerIndex;
+  renderTrainingOnline(state);
+  showView('view-training-online');
+});
+
+socket.on('training-over', (data) => {
+  lastGameOver = data;
+  lastPlayerIndex = -1;
+  renderGameOver(data);
+  showView('view-gameover');
+});
+
 socket.on('game-over', (data) => {
   lastGameOver = data;
   lastPlayerIndex = -1;
@@ -376,8 +431,16 @@ function renderLobby(room) {
   if (isHost) {
     settingsPanel.classList.remove('hidden');
     waitingMsg.classList.add('hidden');
+
+    if (pendingGameType) {
+      document.getElementById('setting-game-type').value = pendingGameType;
+      document.getElementById('setting-game-type').dispatchEvent(new Event('change'));
+      pendingGameType = null;
+    }
+
+    const isTraining = document.getElementById('setting-game-type').value === 'training';
     const cameraLabel = document.getElementById('camera-label');
-    if (room.players.length === 2) {
+    if (!isTraining && room.players.length === 2) {
       cameraLabel.classList.remove('hidden');
     } else {
       cameraLabel.classList.add('hidden');
@@ -414,10 +477,14 @@ function renderGame(state) {
   document.getElementById('numpad-display').textContent = '0';
   setNumpadEnabled(isMeTurn);
 
+  document.getElementById('game-room-code-val').textContent = myRoomCode;
+
   const avgs = document.getElementById('averages');
   avgs.innerHTML = state.players.map(p =>
     `<span class="avg-chip">${esc(p.name)}: ort ${p.avg}</span>`
   ).join('');
+
+  renderScoreboard(state);
 
   if (state.settings.cameraEnabled) {
     lastIsMeTurn = isMeTurn;
@@ -433,13 +500,79 @@ function renderGame(state) {
 function renderGameOver(data) {
   document.getElementById('winner-name').textContent = data.winner;
   const stats = document.getElementById('gameover-stats');
-  stats.innerHTML = data.players.map(p => `
-    <div class="stat-row">
-      <span>${esc(p.name)}</span>
-      <span>${p.legsWon} leg · ort ${p.avg}</span>
+  if (data.gameType === 'training') {
+    stats.innerHTML = data.players.map(p => `
+      <div class="stat-row">
+        <span>${esc(p.name)}</span>
+        <span>${p.score} puan</span>
+      </div>
+    `).join('');
+  } else {
+    stats.innerHTML = data.players.map(p => `
+      <div class="stat-row">
+        <span>${esc(p.name)}</span>
+        <span>${p.legsWon} leg · ort ${p.avg}</span>
+      </div>
+    `).join('');
+  }
+}
+
+function renderScoreboard(state) {
+  const sb = document.getElementById('scoreboard');
+  if (state.players.length !== 2) { sb.classList.add('hidden'); return; }
+  const mode = state.settings.mode;
+  sb.classList.remove('hidden');
+
+  const colHTML = (p, isLeft) => {
+    let rem = mode;
+    const rows = (p.legTurns || []).map((t, i, arr) => {
+      rem -= t;
+      const last = i === arr.length - 1;
+      const throwSpan = `<span class="sb-throw${last ? ' sb-current-throw' : ''}">${t}</span>`;
+      const remSpan = `<span class="sb-rem${last ? '' : ' sb-past-rem'}">${rem}</span>`;
+      return `<div class="sb-row">${isLeft ? throwSpan + remSpan : remSpan + throwSpan}</div>`;
+    }).join('');
+    return `<div class="sb-col${isLeft ? '' : ' sb-col-right'}">
+      <div class="sb-header">${esc(p.name)}</div>
+      ${rows}
+    </div>`;
+  };
+
+  sb.innerHTML = colHTML(state.players[0], true) +
+    '<div class="sb-divider"></div>' +
+    colHTML(state.players[1], false);
+
+  sb.scrollTop = sb.scrollHeight;
+}
+
+function renderTrainingOnline(state) {
+  document.getElementById('tot-room-code').textContent = myRoomCode;
+
+  const currentPlayer = state.players[state.currentPlayerIndex];
+  const isMeTurn = currentPlayer && currentPlayer.id === socket.id;
+
+  document.getElementById('tot-players').innerHTML = state.players.map((p, i) => `
+    <div class="player-card ${i === state.currentPlayerIndex ? 'active' : ''}">
+      <div class="p-name">${esc(p.name)}</div>
+      <div class="p-score">${p.score}</div>
+      <div class="p-legs">/ ${state.settings.pointsToWin}</div>
     </div>
   `).join('');
+
+  document.getElementById('tot-turn-label').textContent =
+    isMeTurn ? 'Senin sıran!' : `${currentPlayer ? esc(currentPlayer.name) : ''} atıyor...`;
+
+  document.getElementById('tot-target').textContent = state.currentTarget || '';
+  document.getElementById('tot-hit').disabled = !isMeTurn;
+  document.getElementById('tot-miss').disabled = !isMeTurn;
 }
+
+document.getElementById('tot-hit').addEventListener('click', () => {
+  socket.emit('submit-training', { hit: true });
+});
+document.getElementById('tot-miss').addEventListener('click', () => {
+  socket.emit('submit-training', { hit: false });
+});
 
 // ── Helpers ────────────────────────────────────────────────────
 function showError(elId, msg) {

@@ -1,4 +1,4 @@
-const CACHE = 'dartoyna-v3';
+const CACHE = 'dartoyna-v5';
 const SHELL = ['/', '/style.css', '/app.js', '/checkouts.js', '/manifest.json'];
 
 self.addEventListener('install', e => {

@@ -16,12 +16,29 @@
     <div class="card">
       <input id="home-name" class="input" type="text" placeholder="Adın" maxlength="20" autocomplete="off">
       <button id="btn-create" class="btn btn-primary">Oyun Oluştur</button>
-      <button id="btn-training" class="btn btn-training">🎯 Antrenman</button>
+      <button id="btn-training" class="btn btn-training">🎯 Solo Antrenman</button>
+      <button id="btn-training-online" class="btn btn-training-online">🌐 Online Antrenman</button>
       <div class="divider">veya</div>
       <input id="home-code" class="input" type="text" placeholder="Oda Kodu (4 hane)" maxlength="4" inputmode="numeric">
       <button id="btn-join" class="btn btn-secondary">Oyuna Katıl</button>
     </div>
     <p id="home-error" class="error hidden"></p>
+  </div>
+
+  <!-- VIEW: Training Setup -->
+  <div id="view-training-setup" class="view">
+    <div class="logo">🎯 Solo Antrenman</div>
+    <div class="card">
+      <p class="settings-title">Hedef Türleri</p>
+      <div class="filter-group">
+        <label class="filter-label"><input type="checkbox" id="ts-single" checked> Single (1-20, Bull)</label>
+        <label class="filter-label"><input type="checkbox" id="ts-double" checked> Double (D1-D20, D-Bull)</label>
+        <label class="filter-label"><input type="checkbox" id="ts-triple" checked> Triple (T1-T20)</label>
+      </div>
+      <p id="ts-error" class="error hidden">En az bir tür seç</p>
+      <button id="btn-training-start" class="btn btn-primary">Başla</button>
+      <button id="btn-training-setup-back" class="btn btn-secondary">Geri</button>
+    </div>
   </div>
 
   <!-- VIEW: Lobby -->
@@ -34,24 +51,51 @@
     <div id="lobby-players" class="player-list"></div>
 
     <div id="lobby-settings" class="settings-panel hidden">
-      <label>Mod
-        <select id="setting-mode">
-          <option value="101">101</option>
-          <option value="201">201</option>
-          <option value="301" selected>301</option>
-          <option value="501">501</option>
+      <label>Oyun Türü
+        <select id="setting-game-type">
+          <option value="dart">Normal Dart</option>
+          <option value="training">🎯 Online Antrenman</option>
         </select>
       </label>
-      <label>Format
-        <select id="setting-format">
-          <option value="1">BO1</option>
-          <option value="2" selected>BO3</option>
-          <option value="3">BO5</option>
-        </select>
-      </label>
-      <label id="camera-label" class="hidden camera-label">
-        <input type="checkbox" id="setting-camera"> 📷 Kameralı oyna
-      </label>
+
+      <div id="dart-settings">
+        <label>Mod
+          <select id="setting-mode">
+            <option value="101">101</option>
+            <option value="201">201</option>
+            <option value="301" selected>301</option>
+            <option value="501">501</option>
+          </select>
+        </label>
+        <label>Format
+          <select id="setting-format">
+            <option value="1">BO1</option>
+            <option value="2" selected>BO3</option>
+            <option value="3">BO5</option>
+          </select>
+        </label>
+        <label id="camera-label" class="hidden camera-label">
+          <input type="checkbox" id="setting-camera"> 📷 Kameralı oyna
+        </label>
+      </div>
+
+      <div id="training-lobby-settings" class="hidden">
+        <label>Hedef Puan
+          <select id="setting-points">
+            <option value="5">5 Puan</option>
+            <option value="10" selected>10 Puan</option>
+            <option value="15">15 Puan</option>
+            <option value="20">20 Puan</option>
+          </select>
+        </label>
+        <p class="settings-title">Hedef Türleri</p>
+        <div class="filter-group">
+          <label class="filter-label"><input type="checkbox" id="ot-single" checked> Single</label>
+          <label class="filter-label"><input type="checkbox" id="ot-double" checked> Double</label>
+          <label class="filter-label"><input type="checkbox" id="ot-triple" checked> Triple</label>
+        </div>
+      </div>
+
       <button id="btn-start" class="btn btn-primary">Oyunu Başlat</button>
     </div>
 
@@ -61,6 +105,7 @@
 
   <!-- VIEW: Game -->
   <div id="view-game" class="view">
+    <div class="game-room-code">Oda: <span id="game-room-code-val" class="code-badge-small"></span></div>
     <div id="game-players" class="players-row"></div>
 
     <div class="turn-info">
@@ -88,6 +133,7 @@
       </div>
     </div>
 
+    <div id="scoreboard" class="scoreboard hidden"></div>
     <div id="averages" class="averages"></div>
     <video id="game-video" class="game-video hidden" autoplay playsinline muted></video>
   </div>
@@ -100,6 +146,22 @@
     <div id="gameover-stats" class="stats-list"></div>
     <button id="btn-share" class="btn btn-secondary">Paylaş</button>
     <button id="btn-new-game" class="btn btn-primary">Yeni Oyun</button>
+  </div>
+
+  <!-- VIEW: Online Training Game -->
+  <div id="view-training-online" class="view">
+    <div class="game-room-code">Oda: <span id="tot-room-code" class="code-badge-small"></span></div>
+    <div id="tot-players" class="players-row"></div>
+    <div class="turn-info">
+      <div id="tot-turn-label" class="turn-label"></div>
+    </div>
+    <div class="training-card">
+      <div class="training-label">Hedef</div>
+      <div id="tot-target" class="training-target"></div>
+    </div>
+    <button id="tot-hit" class="btn btn-hit">Vurdum!</button>
+    <button id="tot-miss" class="btn btn-miss">Kaçırdım</button>
+    <p id="tot-error" class="error hidden"></p>
   </div>
 
   <!-- VIEW: Training -->

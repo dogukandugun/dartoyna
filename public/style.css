@@ -270,6 +270,48 @@ body {
 .stat-item .stat-val { font-size: 1.5rem; font-weight: 900; }
 .stat-item .stat-key { font-size: 0.8rem; color: var(--text-muted); }
 
+/* Filter checkboxes */
+.settings-title { font-size: 0.9rem; color: var(--text-muted); font-weight: 600; }
+.filter-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.filter-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; cursor: pointer; }
+.filter-label input { accent-color: var(--accent); width: 1.1rem; height: 1.1rem; cursor: pointer; }
+
+/* Game room code */
+.game-room-code { text-align: center; font-size: 0.85rem; color: var(--text-muted); }
+.code-badge-small {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.15rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+}
+
+/* Scoreboard */
+.scoreboard {
+  display: flex;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-height: 220px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+.sb-col { flex: 1; padding: 0.5rem 0.75rem; display: flex; flex-direction: column; gap: 0.15rem; }
+.sb-col-right { align-items: flex-end; }
+.sb-divider { width: 1px; background: var(--border); flex-shrink: 0; }
+.sb-row { display: flex; gap: 0.75rem; width: 100%; }
+.sb-throw { font-weight: 700; font-size: 0.9rem; min-width: 2rem; }
+.sb-rem { font-size: 0.9rem; }
+.sb-past-rem { text-decoration: line-through; color: var(--text-muted); opacity: 0.6; }
+.sb-current-throw { color: var(--accent); }
+.sb-header { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-align: center; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); margin-bottom: 0.25rem; }
+
+/* Online training button */
+.btn-training-online { background: #457b9d; color: #fff; }
+
 /* Camera */
 .camera-label {
   display: flex;
