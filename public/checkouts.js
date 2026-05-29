@@ -6,8 +6,8 @@
 
   // Tüm dartlar (ilk/orta dart için)
   const ALL = [...TREBLES, ...DOUBLES, ...SPECIAL, ...SINGLES].sort((a, b) => b.val - a.val);
-  // Sadece geçerli bitiş dartları (son dart double, triple veya bull olmalı)
-  const FINISH = [...TREBLES, ...DOUBLES, ...SPECIAL].sort((a, b) => b.val - a.val);
+  // Sadece geçerli bitiş dartları (son dart double veya D-Bull olmalı)
+  const FINISH = [...DOUBLES, { name: 'D-Bull', val: 50 }].sort((a, b) => b.val - a.val);
 
   const CHECKOUTS = {};
 

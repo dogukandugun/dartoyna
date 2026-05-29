@@ -356,6 +356,16 @@ function playTurnSound() {
 }
 
 // ── Socket events ──────────────────────────────────────────────
+socket.on('connect', () => {
+  if (!myRoomCode || !myName) return;
+  const active = document.querySelector('.view.active');
+  if (!active) return;
+  const id = active.id;
+  if (id === 'view-lobby' || id === 'view-game' || id === 'view-training-online') {
+    socket.emit('join-room', { roomCode: myRoomCode, playerName: myName });
+  }
+});
+
 socket.on('room-update', (room) => {
   myRoomCode = room.roomCode;
   isHost = room.hostId === socket.id;

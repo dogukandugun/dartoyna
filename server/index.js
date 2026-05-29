@@ -28,6 +28,8 @@ io.on('connection', (socket) => {
     socket.join(roomCode);
     if (result.isReconnect && result.room.status === 'playing') {
       socket.emit('game-update', sanitize(result.room));
+    } else if (result.isReconnect && result.room.gameType === 'training') {
+      socket.emit('training-update', sanitize(result.room));
     } else {
       io.to(roomCode).emit('room-update', sanitize(result.room));
     }

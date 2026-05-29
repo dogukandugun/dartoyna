@@ -62,6 +62,17 @@ class GameStore {
       return { error: 'Oyun devam ediyor' };
     }
 
+    // Lobide yeniden bağlanma
+    const existingLobby = room.players.find(p => p.name === trimmed);
+    if (existingLobby) {
+      this.socketToRoom.delete(existingLobby.id);
+      if (room.hostId === existingLobby.id) room.hostId = socketId;
+      existingLobby.id = socketId;
+      this.socketToRoom.set(socketId, roomCode);
+      room.lastActivityAt = Date.now();
+      return { room, isReconnect: true };
+    }
+
     if (room.players.length >= 8) return { error: 'Oda dolu (max 8)' };
     if (room.players.find(p => p.name === trimmed)) return { error: 'Bu isim kullanımda' };
 
